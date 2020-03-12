@@ -27,6 +27,8 @@ export class GraphQLRequestVisitor extends ClientSideBaseVisitor<RawGraphQLReque
     if (this.config.rawRequest) {
       this._additionalImports.push(`import { GraphQLError } from 'graphql-request/dist/src/types';`);
     }
+
+    this._additionalImports.push(`import { Headers } from 'graphql-request/dist/src/types';`);
   }
 
   protected buildOperation(node: OperationDefinitionNode, documentVariableName: string, operationType: string, operationResultType: string, operationVariablesTypes: string): string {
@@ -47,13 +49,15 @@ export class GraphQLRequestVisitor extends ClientSideBaseVisitor<RawGraphQLReque
         const optionalVariables = !o.node.variableDefinitions || o.node.variableDefinitions.length === 0 || o.node.variableDefinitions.every(v => v.type.kind !== Kind.NON_NULL_TYPE || v.defaultValue);
         const doc = this.config.documentMode === DocumentMode.string ? o.documentVariableName : `print(${o.documentVariableName})`;
         if (this.config.rawRequest) {
-          return `${o.node.name.value}(variables${optionalVariables ? '?' : ''}: ${o.operationVariablesTypes}): Promise<{ data?: ${
+          return `${o.node.name.value}(variables${optionalVariables ? '?' : ''}: ${o.operationVariablesTypes}, headers?: Headers): Promise<{ data?: ${
             o.operationResultType
           } | undefined; extensions?: any; headers: Headers; status: number; errors?: GraphQLError[] | undefined; }> {
+    headers !== undefined && client.setHeaders(headers);
     return client.rawRequest<${o.operationResultType}>(${doc}, variables);
 }`;
         } else {
-          return `${o.node.name.value}(variables${optionalVariables ? '?' : ''}: ${o.operationVariablesTypes}): Promise<${o.operationResultType}> {
+          return `${o.node.name.value}(variables${optionalVariables ? '?' : ''}: ${o.operationVariablesTypes}, headers?: Headers): Promise<${o.operationResultType}> {
+  headers !== undefined && client.setHeaders(headers);
   return client.request<${o.operationResultType}>(${doc}, variables);
 }`;
         }
